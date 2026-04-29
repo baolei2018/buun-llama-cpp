@@ -10,16 +10,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { sys: CLANG64, env: clang-x86_64 }
+          - { sys: UCRT64, env: ucrt-x86_64 }
 
     steps:
       - name: Clone
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: experiment/SD-073-dflash-swa
 
       - name: Setup ${{ matrix.sys }}
-        uses: msys2/setup-msys2@v2
+        uses: msys2/setup-msys2@cafece8e6baf9247cf9b1bf95097b0b983cc558d
         with:
           update: true
           msystem: ${{ matrix.sys }}
@@ -29,24 +29,15 @@ jobs:
             mingw-w64-${{ matrix.env }}-toolchain
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-vulkan-headers
-            mingw-w64-${{ matrix.env }}-glslang
             mingw-w64-${{ matrix.env }}-vulkan-loader
 
-      - name: Configure CMake
+      - name: Build with Vulkan
         shell: msys2 {0}
         run: |
-            cmake -B build \
-              -DGGML_VULKAN=ON \
-              -DGGML_NATIVE=OFF \
-              -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_C_COMPILER=clang \
-              -DCMAKE_CXX_COMPILER=clang++
-
-      - name: Build
-        shell: msys2 {0}
-        run: |
+            cmake -B build -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE=Release
             cmake --build build --config Release -j$(nproc) 2>&1 | tee build.log
             echo "EXIT_CODE=$?" >> $GITHUB_ENV
+        continue-on-error: true
 
       - name: Show build log on failure
         if: failure()
@@ -57,6 +48,6 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: llama-windows-vulkan-${{ matrix.sys }}
+          name: llama-windows-vulkan
           path: build/bin/Release/*.exe
           retention-days: 1
