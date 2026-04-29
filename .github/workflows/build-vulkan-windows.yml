@@ -1,0 +1,40 @@
+name: CI (vulkan-windows)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  windows-vulkan:
+    runs-on: windows-2025
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          ref: experiment/SD-073-dflash-swa
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: MINGW64
+          install: |
+            base-devel
+            git
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-vulkan-headers
+            mingw-w64-x86_64-glslang
+            mingw-w64-x86_64-vulkan-loader
+
+      - name: Build with Vulkan
+        shell: msys2 {0}
+        run: |
+            cmake -B build -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE=Release
+            cmake --build build --config Release -j$(nproc)
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: llama-windows-vulkan
+          path: build/bin/Release/*.exe
+          retention-days: 1
