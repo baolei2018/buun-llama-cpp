@@ -25,6 +25,7 @@ jobs:
             mingw-w64-ucrt-x86_64-vulkan-headers
             mingw-w64-ucrt-x86_64-vulkan-loader
             mingw-w64-ucrt-x86_64-glslang
+            mingw-w64-ucrt-x86_64-shaderc
 
       - name: Build with Vulkan
         shell: msys2 {0}
