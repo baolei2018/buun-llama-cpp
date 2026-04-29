@@ -6,48 +6,43 @@ on:
 jobs:
   windows-vulkan:
     runs-on: windows-2025
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { sys: UCRT64, env: ucrt-x86_64 }
-
     steps:
       - name: Clone
         uses: actions/checkout@v6
         with:
           ref: experiment/SD-073-dflash-swa
 
-      - name: Setup ${{ matrix.sys }}
+      - name: Setup MSYS2 UCRT64
         uses: msys2/setup-msys2@cafece8e6baf9247cf9b1bf95097b0b983cc558d
         with:
           update: true
-          msystem: ${{ matrix.sys }}
+          msystem: UCRT64
           install: |
             base-devel
             git
-            mingw-w64-${{ matrix.env }}-toolchain
-            mingw-w64-${{ matrix.env }}-cmake
-            mingw-w64-${{ matrix.env }}-vulkan-headers
-            mingw-w64-${{ matrix.env }}-vulkan-loader
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-vulkan-headers
+            mingw-w64-ucrt-x86_64-vulkan-loader
 
       - name: Build with Vulkan
         shell: msys2 {0}
         run: |
             cmake -B build -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE=Release
-            cmake --build build --config Release -j$(nproc) 2>&1 | tee build.log
-            echo "EXIT_CODE=$?" >> $GITHUB_ENV
-        continue-on-error: true
+            cmake --build build --config Release -j$(nproc)
 
-      - name: Show build log on failure
-        if: failure()
+      - name: List build output
+        shell: msys2 {0}
         run: |
-            cat build.log
+            find build -name "*.exe" -type f 2>/dev/null | head -20
+            ls -la build/bin/ 2>/dev/null || echo "No build/bin directory"
+            ls -la build/ 2>/dev/null | head -20
 
       - name: Upload artifacts
-        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: llama-windows-vulkan
-          path: build/bin/Release/*.exe
+          path: |
+            build/bin/
+            build/*.exe
           retention-days: 1
