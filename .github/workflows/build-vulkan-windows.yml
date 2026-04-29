@@ -6,47 +6,57 @@ on:
 jobs:
   windows-vulkan:
     runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { sys: CLANG64, env: clang-x86_64 }
+
     steps:
       - name: Clone
         uses: actions/checkout@v4
         with:
           ref: experiment/SD-073-dflash-swa
 
-      - name: Setup MSYS2
+      - name: Setup ${{ matrix.sys }}
         uses: msys2/setup-msys2@v2
         with:
           update: true
-          msystem: MINGW64
+          msystem: ${{ matrix.sys }}
           install: |
             base-devel
             git
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-vulkan-headers
-            mingw-w64-x86_64-glslang
-            mingw-w64-x86_64-vulkan-loader
+            mingw-w64-${{ matrix.env }}-toolchain
+            mingw-w64-${{ matrix.env }}-cmake
+            mingw-w64-${{ matrix.env }}-vulkan-headers
+            mingw-w64-${{ matrix.env }}-glslang
+            mingw-w64-${{ matrix.env }}-vulkan-loader
 
-      - name: Build with Vulkan
+      - name: Configure CMake
         shell: msys2 {0}
         run: |
-            cmake -B build -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE=Release || exit 1
-            cmake --build build --config Release -j$(nproc) || exit 1
+            cmake -B build \
+              -DGGML_VULKAN=ON \
+              -DGGML_NATIVE=OFF \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=clang \
+              -DCMAKE_CXX_COMPILER=clang++
 
-      - name: Upload build log on failure
+      - name: Build
+        shell: msys2 {0}
+        run: |
+            cmake --build build --config Release -j$(nproc) 2>&1 | tee build.log
+            echo "EXIT_CODE=$?" >> $GITHUB_ENV
+
+      - name: Show build log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-debug
-          path: |
-            build/CMakeFiles/CMakeOutput.log
-            build/CMakeFiles/CMakeError.log
-            build/CMakeCache.txt
-          retention-days: 1
+        run: |
+            cat build.log
 
       - name: Upload artifacts
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: llama-windows-vulkan
+          name: llama-windows-vulkan-${{ matrix.sys }}
           path: build/bin/Release/*.exe
           retention-days: 1
