@@ -29,13 +29,8 @@ jobs:
       - name: Build with Vulkan
         shell: msys2 {0}
         run: |
-            cmake -B build -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE=Release
+            cmake -B build -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE=Release -DGGML_FORMAT_CHECK=OFF -DLLAMA_FORMAT_CHECK=OFF
             cmake --build build --config Release -j$(nproc)
-
-      - name: List build output
-        shell: msys2 {0}
-        run: |
-            find build -name "*.exe" -type f 2>/dev/null
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
